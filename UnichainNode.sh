@@ -204,6 +204,44 @@ display_private_key() {
     echo -e "${BLUE}Отображение ключей завершено.${NC}"
 }
 
+delete_node() {
+    echo -e "${YELLOW}Если уверены, что хотите удалить ноду, введите любую букву (CTRL+C чтобы выйти):${NC}"
+    read -p "> " checkjust
+
+    echo -e "${BLUE}Останавливаем ноду Unichain...${NC}"
+    HOMEDIR="$HOME"
+    sudo docker-compose -f "${HOMEDIR}/unichain-node/docker-compose.yml" down
+
+    # Удаление контейнеров
+    echo -e "${BLUE}Удаляем контейнеры Unichain...${NC}"
+    op_node_container=$(docker ps -a --filter "name=op-node" --format "{{.ID}}")
+    op_geth_container=$(docker ps -a --filter "name=op-geth" --format "{{.ID}}")
+
+    if [ -n "$op_node_container" ]; then
+        docker stop "$op_node_container"
+        docker rm "$op_node_container"
+        echo -e "${GREEN}Контейнер op-node удалён.${NC}"
+    fi
+
+    if [ -n "$op_geth_container" ]; then
+        docker stop "$op_geth_container"
+        docker rm "$op_geth_container"
+        echo -e "${GREEN}Контейнер op-geth удалён.${NC}"
+    fi
+
+    # Удаление директории unichain-node
+    echo -e "${BLUE}Удаляем директорию unichain-node...${NC}"
+    sudo rm -rf $HOME/unichain-node
+    echo -e "${GREEN}Директория unichain-node удалена.${NC}"
+
+    # Удаление Docker-образов
+    echo -e "${BLUE}Удаляем Docker-образы Unichain...${NC}"
+    docker images -a | grep "unichain" | awk '{print $3}' | xargs -r docker rmi -f
+    echo -e "${GREEN}Docker-образы Unichain удалены.${NC}"
+
+    echo -e "${GREEN}Нода Unichain полностью удалена!${NC}"
+}
+
 exit_from_script() {
     echo -e "${BLUE}Выход из скрипта...${NC}"
     exit 0
@@ -222,7 +260,8 @@ main_menu() {
         echo -e "${CYAN}6. Остановить ноду${NC}"
         echo -e "${CYAN}7. Обновить ноду${NC}"
         echo -e "${CYAN}8. Показать приватные ключи${NC}"
-        echo -e "${CYAN}9. Выход${NC}"
+        echo -e "${CYAN}9. Удалить ноду${NC}"
+        echo -e "${CYAN}10. Выход${NC}"
         
         echo -e "${YELLOW}Введите номер:${NC} "
         read choice
@@ -235,7 +274,8 @@ main_menu() {
             6) stop_node ;;
             7) update_node ;;
             8) display_private_key ;;
-            9) exit_from_script ;;
+            9) delete_node ;;
+            10) exit_from_script ;;
             *) echo -e "${RED}Неверный выбор, попробуйте снова.${NC}" ;;
         esac
     done
